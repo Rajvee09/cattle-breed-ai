@@ -8,44 +8,109 @@ function App() {
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
 
   const handleImageUpload = (event) => {
     const selectedFile = event.target.files[0];
+
     if (selectedFile) {
       setFile(selectedFile);
       setImage(URL.createObjectURL(selectedFile));
-      setResult(null); // Reset previous result on new upload
+      setResult(null);
+      setError("");
     }
   };
 
   const handleAnalyze = async () => {
-    if (!file) return;
+    if (!file) {
+      return;
+    }
 
     setLoading(true);
+    setResult(null);
+    setError("");
 
     const formData = new FormData();
+
+    // Send the actual image to Flask
     formData.append("image", file);
+
+    // These are optional and currently don't affect
+    // the ConvNeXt model prediction.
     formData.append("species", species);
     formData.append("region", region);
 
     try {
-      // Dummy delay for UI testing
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      // Mocked Response Data
-      setResult({
-        primaryBreed: "Gir",
-        confidence: 94.2,
-        species: "Cattle (Bos indicus)",
-        origin: "Gujarat, India",
-        traits: ["Distinct convex forehead", "Pendulous ears", "Red/Speckled coat"],
-        alternatives: [
-          { breed: "Sahiwal", confidence: 4.1 },
-          { breed: "Rathi", confidence: 1.2 },
-        ],
+      const response = await fetch("http://localhost:5000/predict", {
+        method: "POST",
+        body: formData,
       });
+
+      const data = await response.json();
+
+      console.log("BACKEND RESPONSE:", data);
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Prediction failed");
+      }
+
+      /*
+       * Flask returns:
+       *
+       * {
+       *   success: true,
+       *   predictions: [...]
+       * }
+       *
+       * The first prediction is the model's
+       * highest-confidence prediction.
+       */
+
+      const predictions = data.predictions;
+
+      if (!predictions || predictions.length === 0) {
+        throw new Error("Model returned no predictions.");
+      }
+
+      const primary = predictions[0];
+
+      /*
+       * Convert the backend response into the format
+       * already used by the UI.
+       */
+      setResult({
+        primaryBreed: primary.breed,
+        confidence: primary.confidence,
+
+        // These are displayed as general information.
+        // They are NOT fake model predictions.
+        species:
+          species === "Auto"
+            ? "Indian Bovine"
+            : species,
+
+        origin:
+          region !== ""
+            ? region
+            : "Not specified",
+
+        // The ConvNeXt model currently returns breed
+        // predictions, not physical trait descriptions.
+        traits: [],
+
+        alternatives: predictions.slice(1).map((prediction) => ({
+          breed: prediction.breed,
+          confidence: prediction.confidence,
+        })),
+      });
+
     } catch (error) {
       console.error("Prediction failed:", error);
+
+      setError(
+        error.message ||
+        "Unable to connect to the AI prediction server."
+      );
     } finally {
       setLoading(false);
     }
@@ -53,171 +118,415 @@ function App() {
 
   return (
     <div className="app">
+
+      {/* ================= NAVBAR ================= */}
+
       <header className="navbar">
         <div className="logo">
           🐄 <span>BovineAI</span>
         </div>
-        <div className="tagline">AI-Powered Indian Breed Identification</div>
+
+        <div className="tagline">
+          AI-Powered Indian Breed Identification
+        </div>
       </header>
 
+
+      {/* ================= MAIN CONTENT ================= */}
+
       <main className="main-content">
+
+        {/* ================= HERO ================= */}
+
         <section className="hero">
-          <p className="eyebrow">AI + LIVESTOCK TECHNOLOGY</p>
+
+          <p className="eyebrow">
+            AI + LIVESTOCK TECHNOLOGY
+          </p>
+
           <h1>
             Identify Indian
             <br />
             <span>Cattle & Buffalo Breeds</span>
           </h1>
+
           <p className="description">
-            Upload a photo and get an instant AI-powered breed prediction with confidence scores and trait analysis.
+            Upload a photo and get an instant AI-powered
+            breed prediction with confidence scores.
           </p>
+
         </section>
 
+
+        {/* ================= CLASSIFICATION CARD ================= */}
+
         <section className="card">
+
           <h2>Breed Classification</h2>
+
           <p className="section-description">
-            Upload an image below. Provide optional context to improve prediction accuracy.
+            Upload an image below. Provide optional context
+            for additional information.
           </p>
 
-          {/* Image Upload */}
+
+          {/* ================= IMAGE UPLOAD ================= */}
+
           <div className="field">
-            <label>Animal Photo</label>
+
+            <label>
+              Animal Photo
+            </label>
+
             <label className="upload-box">
+
               {image ? (
-                <img src={image} alt="Uploaded animal" className="preview" />
+                <img
+                  src={image}
+                  alt="Uploaded animal"
+                  className="preview"
+                />
               ) : (
                 <>
-                  <div className="upload-icon">📷</div>
-                  <strong>Upload animal photo</strong>
-                  <span>Click here to select a JPG, PNG, or WEBP image</span>
+                  <div className="upload-icon">
+                    📷
+                  </div>
+
+                  <strong>
+                    Upload animal photo
+                  </strong>
+
+                  <span>
+                    Click here to select a JPG, PNG, or WEBP image
+                  </span>
                 </>
               )}
-              <input type="file" accept="image/*" onChange={handleImageUpload} />
+
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+              />
+
             </label>
+
           </div>
 
-          {/* Species Selection */}
+
+          {/* ================= SPECIES ================= */}
+
           <div className="field">
+
             <label>
-              Species / Category <span className="optional-tag">(Optional)</span>
+              Species / Category{" "}
+              <span className="optional-tag">
+                (Optional)
+              </span>
             </label>
+
             <div className="animal-options">
+
               <button
                 type="button"
-                className={`animal-option ${species === "Auto" ? "selected" : ""}`}
+                className={`animal-option ${
+                  species === "Auto" ? "selected" : ""
+                }`}
                 onClick={() => setSpecies("Auto")}
               >
                 <span>✨</span>
+
                 <div>
-                  <strong>Auto-Detect</strong>
-                  <small>Let AI detect</small>
+                  <strong>
+                    Auto-Detect
+                  </strong>
+
+                  <small>
+                    Let AI detect
+                  </small>
                 </div>
               </button>
 
+
               <button
                 type="button"
-                className={`animal-option ${species === "Cattle" ? "selected" : ""}`}
+                className={`animal-option ${
+                  species === "Cattle" ? "selected" : ""
+                }`}
                 onClick={() => setSpecies("Cattle")}
               >
                 <span>🐄</span>
+
                 <div>
-                  <strong>Cattle</strong>
+                  <strong>
+                    Cattle
+                  </strong>
                 </div>
               </button>
+
 
               <button
                 type="button"
-                className={`animal-option ${species === "Buffalo" ? "selected" : ""}`}
+                className={`animal-option ${
+                  species === "Buffalo" ? "selected" : ""
+                }`}
                 onClick={() => setSpecies("Buffalo")}
               >
                 <span>🐃</span>
+
                 <div>
-                  <strong>Buffalo</strong>
+                  <strong>
+                    Buffalo
+                  </strong>
                 </div>
               </button>
+
             </div>
+
           </div>
 
-          {/* Region Dropdown */}
+
+          {/* ================= REGION ================= */}
+
           <div className="field">
+
             <label htmlFor="region">
-              State / Region <span className="optional-tag">(Optional)</span>
+              State / Region{" "}
+              <span className="optional-tag">
+                (Optional)
+              </span>
             </label>
+
             <select
               id="region"
               value={region}
               onChange={(e) => setRegion(e.target.value)}
             >
-              <option value="">Select Indian State / Region</option>
-              <option>Andhra Pradesh</option>
-              <option>Gujarat</option>
-              <option>Haryana</option>
-              <option>Madhya Pradesh</option>
-              <option>Maharashtra</option>
-              <option>Punjab</option>
-              <option>Rajasthan</option>
-              <option>Tamil Nadu</option>
-              <option>Uttar Pradesh</option>
-              <option>Other / Unknown</option>
+
+              <option value="">
+                Select Indian State / Region
+              </option>
+
+              <option>
+                Andhra Pradesh
+              </option>
+
+              <option>
+                Gujarat
+              </option>
+
+              <option>
+                Haryana
+              </option>
+
+              <option>
+                Madhya Pradesh
+              </option>
+
+              <option>
+                Maharashtra
+              </option>
+
+              <option>
+                Punjab
+              </option>
+
+              <option>
+                Rajasthan
+              </option>
+
+              <option>
+                Tamil Nadu
+              </option>
+
+              <option>
+                Uttar Pradesh
+              </option>
+
+              <option>
+                Other / Unknown
+              </option>
+
             </select>
+
             <small className="hint">
-              Helps narrow down geographically localized native breeds (e.g., Gir, Murrah, Kangayam).
+              Optional context. The current ConvNeXt model
+              makes its prediction from the image.
             </small>
+
           </div>
+
+
+          {/* ================= ANALYZE BUTTON ================= */}
 
           <button
             className="analyze-button"
             disabled={!file || loading}
             onClick={handleAnalyze}
           >
-            {loading ? "⏳ Analyzing Image..." : "🔍 Identify Breed"}
+
+            {loading
+              ? "⏳ Analyzing Image..."
+              : "🔍 Identify Breed"}
+
           </button>
 
-          {/* Results Display Section */}
-          {result && (
-            <div className="results-container">
-              <hr className="divider" />
-              <h3>Identification Result</h3>
 
-              <div className="primary-result">
-                <div className="breed-header">
-                  <h4>{result.primaryBreed}</h4>
-                  <span className="confidence-badge">{result.confidence}% Match</span>
-                </div>
-                <p><strong>Category:</strong> {result.species}</p>
-                <p><strong>Native Region:</strong> {result.origin}</p>
+          {/* ================= ERROR ================= */}
 
-                <div className="traits-list">
-                  <strong>Key Physical Features:</strong>
-                  <ul>
-                    {result.traits.map((trait, idx) => (
-                      <li key={idx}>{trait}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
+          {error && (
 
-              {result.alternatives && result.alternatives.length > 0 && (
-                <div className="alternatives-section">
-                  <h5>Other Close Predictions</h5>
-                  <ul>
-                    {result.alternatives.map((alt, idx) => (
-                      <li key={idx}>
-                        <span>{alt.breed}</span>
-                        <span>{alt.confidence}%</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+            <div className="error-message">
+
+              <strong>
+                Prediction Error
+              </strong>
+
+              <p>
+                {error}
+              </p>
+
+              <small>
+                Make sure the Flask server is running on
+                port 5000.
+              </small>
+
             </div>
+
           )}
 
+
+          {/* ================= RESULTS ================= */}
+
+          {result && (
+
+            <div className="results-container">
+
+              <hr className="divider" />
+
+              <h3>
+                Identification Result
+              </h3>
+
+
+              {/* PRIMARY PREDICTION */}
+
+              <div className="primary-result">
+
+                <div className="breed-header">
+
+                  <h4>
+                    {result.primaryBreed}
+                  </h4>
+
+                  <span className="confidence-badge">
+                    {Number(result.confidence).toFixed(2)}% Match
+                  </span>
+
+                </div>
+
+
+                <p>
+                  <strong>
+                    Category:
+                  </strong>{" "}
+                  {result.species}
+                </p>
+
+
+                <p>
+                  <strong>
+                    Region:
+                  </strong>{" "}
+                  {result.origin}
+                </p>
+
+
+                {/* PHYSICAL FEATURES */}
+
+                {result.traits &&
+                  result.traits.length > 0 && (
+
+                    <div className="traits-list">
+
+                      <strong>
+                        Key Physical Features:
+                      </strong>
+
+                      <ul>
+
+                        {result.traits.map(
+                          (trait, idx) => (
+                            <li key={idx}>
+                              {trait}
+                            </li>
+                          )
+                        )}
+
+                      </ul>
+
+                    </div>
+
+                  )}
+
+              </div>
+
+
+              {/* ================= ALTERNATIVE PREDICTIONS ================= */}
+
+              {result.alternatives &&
+                result.alternatives.length > 0 && (
+
+                  <div className="alternatives-section">
+
+                    <h5>
+                      Other Close Predictions
+                    </h5>
+
+                    <ul>
+
+                      {result.alternatives.map(
+                        (alt, idx) => (
+
+                          <li key={idx}>
+
+                            <span>
+                              {alt.breed}
+                            </span>
+
+                            <span>
+                              {Number(
+                                alt.confidence
+                              ).toFixed(2)}
+                              %
+                            </span>
+
+                          </li>
+
+                        )
+                      )}
+
+                    </ul>
+
+                  </div>
+
+                )}
+
+            </div>
+
+          )}
+
+
+          {/* ================= PRIVACY ================= */}
+
           <p className="privacy-note">
-            Your image is processed securely and used only for classification.
+            Your image is processed by the local AI
+            prediction server for classification.
           </p>
+
         </section>
+
       </main>
+
     </div>
   );
 }
