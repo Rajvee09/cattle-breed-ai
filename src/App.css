@@ -1,6 +1,11 @@
 .app {
   min-height: 100vh;
-  background: #f5f7f4;
+  background:
+    linear-gradient(
+      rgba(245, 247, 244, 0.35),
+      rgba(245, 247, 244, 0.35)
+    ),
+    url("/grass-bg.avif") center center / cover no-repeat fixed;
   color: #17221a;
 }
 
