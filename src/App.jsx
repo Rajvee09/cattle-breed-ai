@@ -10,6 +10,10 @@ function App() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
 
+  // ============================================================
+  // IMAGE UPLOAD
+  // ============================================================
+
   const handleImageUpload = (event) => {
     const selectedFile = event.target.files[0];
 
@@ -21,8 +25,13 @@ function App() {
     }
   };
 
+  // ============================================================
+  // ANALYZE IMAGE
+  // ============================================================
+
   const handleAnalyze = async () => {
     if (!file) {
+      setError("Please upload an animal image first.");
       return;
     }
 
@@ -32,15 +41,16 @@ function App() {
 
     const formData = new FormData();
 
-    // Send the actual image to Flask
+    // Send image to Flask
     formData.append("image", file);
 
-    // These are optional and currently don't affect
-    // the ConvNeXt model prediction.
+    // Optional fields
     formData.append("species", species);
     formData.append("region", region);
 
     try {
+      // IMPORTANT:
+      // Do NOT put markdown/link syntax here.
       const response = await fetch("http://localhost:5000/predict", {
         method: "POST",
         body: formData,
@@ -51,70 +61,77 @@ function App() {
       console.log("BACKEND RESPONSE:", data);
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || "Prediction failed");
+        throw new Error(
+          data.error || "Prediction failed."
+        );
       }
 
-      /*
-       * Flask returns:
-       *
-       * {
-       *   success: true,
-       *   predictions: [...]
-       * }
-       *
-       * The first prediction is the model's
-       * highest-confidence prediction.
-       */
+      // ========================================================
+      // GET PREDICTIONS FROM FLASK
+      // ========================================================
 
       const predictions = data.predictions;
 
       if (!predictions || predictions.length === 0) {
-        throw new Error("Model returned no predictions.");
+        throw new Error(
+          "Model returned no predictions."
+        );
       }
 
+      // Highest-confidence prediction
       const primary = predictions[0];
 
-      /*
-       * Convert the backend response into the format
-       * already used by the UI.
-       */
+      // ========================================================
+      // MAP BACKEND DATA TO FRONTEND
+      // ========================================================
+
       setResult({
         primaryBreed: primary.breed,
+
         confidence: primary.confidence,
 
-        // These are displayed as general information.
-        // They are NOT fake model predictions.
-        species:
-          species === "Auto"
-            ? "Indian Bovine"
-            : species,
-
+        // Actual breed profile information
         origin:
-          region !== ""
-            ? region
-            : "Not specified",
+          primary.origin || "Information not available",
 
-        // The ConvNeXt model currently returns breed
-        // predictions, not physical trait descriptions.
-        traits: [],
+        type:
+          primary.type || "Information not available",
 
-        alternatives: predictions.slice(1).map((prediction) => ({
-          breed: prediction.breed,
-          confidence: prediction.confidence,
-        })),
+        use:
+          primary.use || "Information not available",
+
+        traits:
+          primary.features || [],
+
+        // Display actual predicted category
+        species:
+          primary.type || "Indian Bovine",
+
+        // Remaining model predictions
+        alternatives: predictions
+          .slice(1)
+          .map((prediction) => ({
+            breed: prediction.breed,
+            confidence: prediction.confidence,
+          })),
       });
 
-    } catch (error) {
-      console.error("Prediction failed:", error);
+    } catch (err) {
+      console.error("Prediction failed:", err);
 
       setError(
-        error.message ||
+        err.message ||
         "Unable to connect to the AI prediction server."
       );
+
     } finally {
       setLoading(false);
     }
   };
+
+  // ============================================================
+  // UI
+  // ============================================================
 
   return (
     <div className="app">
@@ -122,13 +139,14 @@ function App() {
       {/* ================= NAVBAR ================= */}
 
       <header className="navbar">
+
         <div className="logo">
           <span>Bovine Breed Identifier</span>
         </div>
 
         <div className="tagline">
-          
         </div>
+
       </header>
 
 
@@ -141,7 +159,6 @@ function App() {
         <section className="hero">
 
           <p className="eyebrow">
-            
           </p>
 
           <h1>
@@ -151,7 +168,6 @@ function App() {
           </h1>
 
           <p className="description">
-            
           </p>
 
         </section>
@@ -164,7 +180,6 @@ function App() {
           <h2>Breed Classification</h2>
 
           <p className="section-description">
-            
           </p>
 
 
@@ -179,15 +194,18 @@ function App() {
             <label className="upload-box">
 
               {image ? (
+
                 <img
                   src={image}
                   alt="Uploaded animal"
                   className="preview"
                 />
+
               ) : (
+
                 <>
+
                   <div className="upload-icon">
-                    
                   </div>
 
                   <strong>
@@ -195,9 +213,11 @@ function App() {
                   </strong>
 
                   <span>
-                    Click here 
+                    Click here
                   </span>
+
                 </>
+
               )}
 
               <input
@@ -224,16 +244,22 @@ function App() {
 
             <div className="animal-options">
 
+              {/* AUTO */}
+
               <button
                 type="button"
                 className={`animal-option ${
-                  species === "Auto" ? "selected" : ""
+                  species === "Auto"
+                    ? "selected"
+                    : ""
                 }`}
                 onClick={() => setSpecies("Auto")}
               >
+
                 <span>✨</span>
 
                 <div>
+
                   <strong>
                     Auto-Detect
                   </strong>
@@ -241,41 +267,59 @@ function App() {
                   <small>
                     Let AI detect
                   </small>
+
                 </div>
+
               </button>
 
+
+              {/* CATTLE */}
 
               <button
                 type="button"
                 className={`animal-option ${
-                  species === "Cattle" ? "selected" : ""
+                  species === "Cattle"
+                    ? "selected"
+                    : ""
                 }`}
                 onClick={() => setSpecies("Cattle")}
               >
+
                 <span>🐄</span>
 
                 <div>
+
                   <strong>
                     Cattle
                   </strong>
+
                 </div>
+
               </button>
 
+
+              {/* BUFFALO */}
 
               <button
                 type="button"
                 className={`animal-option ${
-                  species === "Buffalo" ? "selected" : ""
+                  species === "Buffalo"
+                    ? "selected"
+                    : ""
                 }`}
                 onClick={() => setSpecies("Buffalo")}
               >
+
                 <span>🐃</span>
 
                 <div>
+
                   <strong>
                     Buffalo
                   </strong>
+
                 </div>
+
               </button>
 
             </div>
@@ -283,7 +327,51 @@ function App() {
           </div>
 
 
-          
+          {/* ================= REGION ================= */}
+
+          <div className="field">
+
+            <label>
+              Region{" "}
+              <span className="optional-tag">
+                (Optional)
+              </span>
+            </label>
+
+            <select
+              value={region}
+              onChange={(e) =>
+                setRegion(e.target.value)
+              }
+            >
+
+              <option value="">
+                Auto / Not specified
+              </option>
+
+              <option value="North India">
+                North India
+              </option>
+
+              <option value="South India">
+                South India
+              </option>
+
+              <option value="West India">
+                West India
+              </option>
+
+              <option value="East India">
+                East India
+              </option>
+
+              <option value="Central India">
+                Central India
+              </option>
+
+            </select>
+
+          </div>
 
 
           {/* ================= ANALYZE BUTTON ================= */}
@@ -316,8 +404,8 @@ function App() {
               </p>
 
               <small>
-                Make sure the Flask server is running on
-                port 5000.
+                Make sure the Flask server is running
+                on port 5000.
               </small>
 
             </div>
@@ -338,7 +426,7 @@ function App() {
               </h3>
 
 
-              {/* PRIMARY PREDICTION */}
+              {/* ================= PRIMARY RESULT ================= */}
 
               <div className="primary-result">
 
@@ -349,59 +437,114 @@ function App() {
                   </h4>
 
                   <span className="confidence-badge">
-                    {Number(result.confidence).toFixed(2)}% Match
+
+                    {Number(
+                      result.confidence
+                    ).toFixed(2)}
+
+                    % Match
+
                   </span>
 
                 </div>
 
 
+                {/* CATEGORY */}
+
                 <p>
+
                   <strong>
                     Category:
                   </strong>{" "}
+
                   {result.species}
+
                 </p>
 
+
+                {/* ORIGIN */}
 
                 <p>
+
                   <strong>
-                    Region:
+                    Origin:
                   </strong>{" "}
+
                   {result.origin}
+
                 </p>
 
 
-                {/* PHYSICAL FEATURES */}
+                {/* TYPE */}
 
-                {result.traits &&
-                  result.traits.length > 0 && (
+                <p>
 
-                    <div className="traits-list">
+                  <strong>
+                    Type:
+                  </strong>{" "}
 
-                      <strong>
-                        Key Physical Features:
-                      </strong>
+                  {result.type}
 
-                      <ul>
+                </p>
 
-                        {result.traits.map(
+
+                {/* USE */}
+
+                <p>
+
+                  <strong>
+                    Primary Use:
+                  </strong>{" "}
+
+                  {result.use}
+
+                </p>
+
+
+                {/* FEATURES */}
+
+                {result.traits && (
+
+                  <div className="traits-list">
+
+                    <strong>
+                      Key Physical Features:
+                    </strong>
+
+                    <ul>
+
+                      {Array.isArray(
+                        result.traits
+                      ) ? (
+
+                        result.traits.map(
                           (trait, idx) => (
+
                             <li key={idx}>
                               {trait}
                             </li>
+
                           )
-                        )}
+                        )
 
-                      </ul>
+                      ) : (
 
-                    </div>
+                        <li>
+                          {result.traits}
+                        </li>
 
-                  )}
+                      )}
+
+                    </ul>
+
+                  </div>
+
+                )}
 
               </div>
 
 
-              {/* ================= ALTERNATIVE PREDICTIONS ================= */}
+              {/* ================= ALTERNATIVES ================= */}
 
               {result.alternatives &&
                 result.alternatives.length > 0 && (
@@ -424,10 +567,13 @@ function App() {
                             </span>
 
                             <span>
+
                               {Number(
                                 alt.confidence
                               ).toFixed(2)}
+
                               %
+
                             </span>
 
                           </li>
@@ -449,7 +595,6 @@ function App() {
           {/* ================= PRIVACY ================= */}
 
           <p className="privacy-note">
-            
           </p>
 
         </section>
