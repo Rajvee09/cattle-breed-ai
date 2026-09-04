@@ -123,11 +123,11 @@ function App() {
 
       <header className="navbar">
         <div className="logo">
-          🐄 <span>BovineAI</span>
+          <span>Bovine Breed Identifier</span>
         </div>
 
         <div className="tagline">
-          AI-Powered Indian Breed Identification
+          
         </div>
       </header>
 
@@ -141,7 +141,7 @@ function App() {
         <section className="hero">
 
           <p className="eyebrow">
-            AI + LIVESTOCK TECHNOLOGY
+            
           </p>
 
           <h1>
@@ -151,8 +151,7 @@ function App() {
           </h1>
 
           <p className="description">
-            Upload a photo and get an instant AI-powered
-            breed prediction with confidence scores.
+            
           </p>
 
         </section>
@@ -165,8 +164,7 @@ function App() {
           <h2>Breed Classification</h2>
 
           <p className="section-description">
-            Upload an image below. Provide optional context
-            for additional information.
+            
           </p>
 
 
@@ -189,7 +187,7 @@ function App() {
               ) : (
                 <>
                   <div className="upload-icon">
-                    📷
+                    
                   </div>
 
                   <strong>
@@ -197,7 +195,7 @@ function App() {
                   </strong>
 
                   <span>
-                    Click here to select a JPG, PNG, or WEBP image
+                    Click here 
                   </span>
                 </>
               )}
@@ -285,75 +283,7 @@ function App() {
           </div>
 
 
-          {/* ================= REGION ================= */}
-
-          <div className="field">
-
-            <label htmlFor="region">
-              State / Region{" "}
-              <span className="optional-tag">
-                (Optional)
-              </span>
-            </label>
-
-            <select
-              id="region"
-              value={region}
-              onChange={(e) => setRegion(e.target.value)}
-            >
-
-              <option value="">
-                Select Indian State / Region
-              </option>
-
-              <option>
-                Andhra Pradesh
-              </option>
-
-              <option>
-                Gujarat
-              </option>
-
-              <option>
-                Haryana
-              </option>
-
-              <option>
-                Madhya Pradesh
-              </option>
-
-              <option>
-                Maharashtra
-              </option>
-
-              <option>
-                Punjab
-              </option>
-
-              <option>
-                Rajasthan
-              </option>
-
-              <option>
-                Tamil Nadu
-              </option>
-
-              <option>
-                Uttar Pradesh
-              </option>
-
-              <option>
-                Other / Unknown
-              </option>
-
-            </select>
-
-            <small className="hint">
-              Optional context. The current ConvNeXt model
-              makes its prediction from the image.
-            </small>
-
-          </div>
+          
 
 
           {/* ================= ANALYZE BUTTON ================= */}
