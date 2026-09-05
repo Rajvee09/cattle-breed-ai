@@ -519,8 +519,7 @@ function App() {
           {/* ================= PRIVACY ================= */}
 
           <p className="privacy-note">
-            Your image is processed by the local AI
-            prediction server for classification.
+            Your image is processed securely and used only for classification.
           </p>
 
         </section>
