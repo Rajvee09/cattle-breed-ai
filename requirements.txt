@@ -1,5 +1,4 @@
 package.json
 src
 public
-api
 requirements.txt  
